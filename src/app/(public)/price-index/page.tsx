@@ -16,7 +16,6 @@ import {
   Legend
 } from "recharts";
 import { TrendingDown, TrendingUp, Info, Activity, Percent, ArrowDownRight, ArrowUpRight } from "lucide-react";
-import { formatPercentage } from "@/lib/jwt";
 
 // Mock Data
 const CATEGORY_TRENDS_DATA = [
