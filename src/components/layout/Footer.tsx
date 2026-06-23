@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Sparkles, Mail, Phone, MapPin } from "lucide-react";
+import Image from "next/image";
+import { Mail, Phone, MapPin } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -7,10 +8,14 @@ export default function Footer() {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Logo & Slogan */}
-          <div className="space-y-4">
-            <Link href="/" className="flex items-center space-x-2 text-primary font-bold text-xl">
-              <Sparkles className="h-5 w-5 fill-primary" />
-              <span>Dealert</span>
+          <div className="flex flex-col" >
+            <Link href="/">
+               <Image
+                src="/dealert_logo.png"
+                alt="Dealert"
+                width={100}
+                height={100}
+                className="h-10 w-auto rounded-3xl mb-4 "/>
             </Link>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Nepal&apos;s smart price intelligence, historical charts aggregator, and instant deal alert notifier. Track pricing trends across Daraz, Sastodeal, Oliz Store, and more.

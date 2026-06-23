@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Dealert - Nepal's Price Tracker & Deal Alert Platform",
-  description: "Track prices, monitor drops, configure instant email and trigger alerts for items on Daraz, Sastodeal, Oliz Store and other e-commerce platforms in Nepal.",
+  description: "Track prices, monitor drops, configure instant email and trigger alerts for items on Daraz e-commerce platforms in Nepal.",
 };
 
 export default function RootLayout({

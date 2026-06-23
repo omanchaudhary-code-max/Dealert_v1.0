@@ -2,9 +2,12 @@ import { ObjectId } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 import type { Product, PriceHistory } from '@/types/product'
 
-// Raw documents as actually written by the crawler (snake_case).
-// These never leave this file — every public method maps them into
-// the camelCase `Product` / `PriceHistory` types from '@/types/product'.
+// ---------------------------------------------------------------------------
+// Raw document shapes — exactly what the Python/Selenium crawler writes to
+// MongoDB. All fields are snake_case. These interfaces never leave this file;
+// every public method maps into the camelCase Product/PriceHistory types.
+// ---------------------------------------------------------------------------
+
 interface RawProduct {
   _id: ObjectId
   item_id: string
@@ -31,31 +34,138 @@ interface RawPriceHistory {
   category: string
 }
 
-// Escapes regex special characters so a category value with symbols
-// (e.g. "Books & Stationery") can't break the pattern or be used for
-// regex injection if this value ever comes from less-trusted input.
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-// Builds a case-insensitive, whitespace-trimmed exact-match filter.
-// The crawler's stored category strings don't always match the
-// frontend's display labels byte-for-byte (casing, stray whitespace),
-// so a strict `===` match silently returns zero results on click —
-// this is the actual cause of "category page shows nothing."
 function categoryFilter(category: string) {
+  // Case-insensitive exact match: crawler stores 'laptops', UI sends 'Laptops'.
   return { $regex: `^${escapeRegex(category.trim())}$`, $options: 'i' }
 }
 
-// Case-insensitive substring match against the raw `title` field.
-// Deliberately not $text — $text requires a text index on the
-// collection (none exists), and only does whole-word/stemmed
-// matching, which fails on partial input like "lap" -> "Laptop".
-// This runs against raw documents (pre-$project), so it targets the
-// snake_case `title` field, not the projected `name`.
 function searchFilter(search: string) {
   return { $regex: escapeRegex(search.trim()), $options: 'i' }
 }
+
+// Valid camelCase sort fields that exist on the projected document shape.
+// Anything not in this set falls back to lastCrawledAt.
+const VALID_SORT_FIELDS = new Set([
+  'lastCrawledAt',
+  'currentPrice',
+  'discountPercentage',
+])
+
+// ---------------------------------------------------------------------------
+// Pipeline stage builders
+//
+// buildProductPipeline is split into three parts so callers can insert
+// $sample (or any other stage) *between* the $match and the expensive
+// $lookup. Calling the full pipeline with $sample after $match but before
+// $lookup means we only join the N documents we actually need instead of
+// joining the whole collection then sampling — much cheaper.
+//
+//   matchStages(filter)   →  [ $match ]
+//   joinAndProjectStages  →  [ $lookup, $unwind, $addFields, $project ]
+//   buildProductPipeline  →  matchStages + joinAndProjectStages  (convenience)
+// ---------------------------------------------------------------------------
+
+function matchStages(match: Record<string, unknown>) {
+  return [{ $match: match }]
+}
+
+function joinAndProjectStages() {
+  return [
+    // Join with the single most recent price_history record per product.
+    // Pricing data (current_price, original_price) only lives here —
+    // products.last_price is a snapshot fallback only.
+    {
+      $lookup: {
+        from: 'price_history',
+        let: { itemId: '$item_id' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$item_id', '$$itemId'] } } },
+          { $sort: { scraped_at: -1 } },
+          { $limit: 1 },
+        ],
+        as: 'latestPrice',
+      },
+    },
+    { $unwind: { path: '$latestPrice', preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        computedCurrentPrice: {
+          $ifNull: ['$latestPrice.current_price', '$last_price'],
+        },
+        computedOriginalPrice: {
+          $ifNull: ['$latestPrice.original_price', '$last_price'],
+        },
+        computedDiscountPercentage: {
+          $cond: [
+            {
+              $and: [
+                { $ne: ['$latestPrice.original_price', null] },
+                { $gt: ['$latestPrice.original_price', 0] },
+              ],
+            },
+            {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        {
+                          $subtract: [
+                            '$latestPrice.original_price',
+                            '$latestPrice.current_price',
+                          ],
+                        },
+                        '$latestPrice.original_price',
+                      ],
+                    },
+                    100,
+                  ],
+                },
+                0,
+              ],
+            },
+            0,
+          ],
+        },
+      },
+    },
+    // $project translates snake_case crawler fields → camelCase Product type.
+    {
+      $project: {
+        _id: { $toString: '$_id' },
+        id: { $toString: '$_id' },
+        itemId: '$item_id',
+        name: '$title',
+        currentPrice: '$computedCurrentPrice',
+        originalPrice: '$computedOriginalPrice',
+        discountPercentage: '$computedDiscountPercentage',
+        imageUrl: '$image_url',
+        productUrl: '$url',
+        category: '$category',
+        sellerName: '$seller_name',
+        inStock: { $eq: ['$is_delisted', false] },
+        lastCrawledAt: '$last_seen',
+        createdAt: '$first_seen',
+      },
+    },
+  ]
+}
+
+function buildProductPipeline(match: Record<string, unknown>) {
+  return [...matchStages(match), ...joinAndProjectStages()]
+}
+
+// ---------------------------------------------------------------------------
+// Repository
+// ---------------------------------------------------------------------------
 
 export class ProductRepository {
   private async getCollection() {
@@ -68,92 +178,19 @@ export class ProductRepository {
     return db.collection<RawPriceHistory>('price_history')
   }
 
-  // Joins a product with its single most recent price_history record,
-  // then projects everything into the exact `Product` shape the rest
-  // of the app expects. This is the actual fix for "NPRNaN" — the
-  // camelCase fields (currentPrice, name, itemId, etc.) never existed
-  // on the raw documents; they have to be computed/renamed here.
-  private buildProductPipeline(match: Record<string, unknown>) {
-    return [
-      { $match: match },
-      {
-        $lookup: {
-          from: 'price_history',
-          let: { itemId: '$item_id' },
-          pipeline: [
-            { $match: { $expr: { $eq: ['$item_id', '$$itemId'] } } },
-            { $sort: { scraped_at: -1 } },
-            { $limit: 1 },
-          ],
-          as: 'latestPrice',
-        },
-      },
-      { $unwind: { path: '$latestPrice', preserveNullAndEmptyArrays: true } },
-      {
-        $addFields: {
-          computedCurrentPrice: { $ifNull: ['$latestPrice.current_price', '$last_price'] },
-          computedOriginalPrice: { $ifNull: ['$latestPrice.original_price', '$last_price'] },
-          computedDiscountPercentage: {
-            $cond: [
-              {
-                $and: [
-                  { $ne: ['$latestPrice.original_price', null] },
-                  { $gt: ['$latestPrice.original_price', 0] },
-                ],
-              },
-              {
-                $round: [
-                  {
-                    $multiply: [
-                      {
-                        $divide: [
-                          { $subtract: ['$latestPrice.original_price', '$latestPrice.current_price'] },
-                          '$latestPrice.original_price',
-                        ],
-                      },
-                      100,
-                    ],
-                  },
-                  0,
-                ],
-              },
-              0,
-            ],
-          },
-        },
-      },
-      {
-        $project: {
-          _id: { $toString: '$_id' },
-          id: { $toString: '$_id' },
-          itemId: '$item_id',
-          name: '$title',
-          currentPrice: '$computedCurrentPrice',
-          originalPrice: '$computedOriginalPrice',
-          discountPercentage: '$computedDiscountPercentage',
-          imageUrl: '$image_url',
-          productUrl: '$url',
-          category: '$category',
-          sellerName: '$seller_name',
-          inStock: { $eq: ['$is_delisted', false] },
-          lastCrawledAt: '$last_seen',
-          createdAt: '$first_seen',
-        },
-      },
-    ]
-  }
-
   async findById(id: string): Promise<Product | null> {
     const col = await this.getCollection()
     const match = { _id: ObjectId.isValid(id) ? new ObjectId(id) : id }
-    const results = await col.aggregate<Product>(this.buildProductPipeline(match)).toArray()
+    const results = await col
+      .aggregate<Product>(buildProductPipeline(match))
+      .toArray()
     return results[0] ?? null
   }
 
   async findByItemId(itemId: string): Promise<Product | null> {
     const col = await this.getCollection()
     const results = await col
-      .aggregate<Product>(this.buildProductPipeline({ item_id: itemId }))
+      .aggregate<Product>(buildProductPipeline({ item_id: itemId }))
       .toArray()
     return results[0] ?? null
   }
@@ -167,21 +204,46 @@ export class ProductRepository {
     sortOrder?: 1 | -1
   }): Promise<Product[]> {
     const col = await this.getCollection()
+
     const match: Record<string, unknown> = { is_delisted: false }
     if (options.category) match.category = categoryFilter(options.category)
     if (options.search) match.title = searchFilter(options.search)
 
-    // sortBy comes in already camelCase from the API and now matches
-    // the final projected field names directly, since sort happens
-    // after $project in the pipeline below.
-    const sortField = options.sortBy ?? 'lastCrawledAt'
+    const limit = options.limit ?? 20
+    const skip = options.skip ?? 0
 
+    // --- Random sort path ---------------------------------------------------
+    // $sample runs AFTER $match but BEFORE $lookup so we only join the N
+    // documents we actually need. Pagination is intentionally disabled for
+    // random: $sample re-draws on every request, so "page 2" would just
+    // repeat documents from page 1 anyway.
+    if (options.sortBy === 'random') {
+      return col
+        .aggregate<Product>([
+          ...matchStages(match),
+          { $sample: { size: limit } },
+          ...joinAndProjectStages(),
+        ])
+        .toArray()
+    }
+
+    // --- Deterministic sort path --------------------------------------------
+    // Unknown sortBy values fall back to lastCrawledAt so arbitrary query
+    // strings can't inject field names directly into the $sort stage.
+    const sortField = VALID_SORT_FIELDS.has(options.sortBy ?? '')
+      ? (options.sortBy as string)
+      : 'lastCrawledAt'
+
+    // _id is a secondary tiebreaker: many products share the same last_seen
+    // timestamp (written in one crawl run), so without it MongoDB's page
+    // boundary is arbitrary and the same document appears on page 1 AND
+    // page 2, causing React's "duplicate key" warning.
     return col
       .aggregate<Product>([
-        ...this.buildProductPipeline(match),
-        { $sort: { [sortField]: options.sortOrder ?? -1 } },
-        { $skip: options.skip ?? 0 },
-        { $limit: options.limit ?? 20 },
+        ...buildProductPipeline(match),
+        { $sort: { [sortField]: options.sortOrder ?? -1, _id: -1 } },
+        { $skip: skip },
+        { $limit: limit },
       ])
       .toArray()
   }
@@ -198,9 +260,9 @@ export class ProductRepository {
     const col = await this.getCollection()
     return col
       .aggregate<Product>([
-        ...this.buildProductPipeline({ is_delisted: false }),
+        ...buildProductPipeline({ is_delisted: false }),
         { $match: { discountPercentage: { $gte: 10 } } },
-        { $sort: { discountPercentage: -1 } },
+        { $sort: { discountPercentage: -1, _id: -1 } },
         { $limit: limit },
       ])
       .toArray()
@@ -226,8 +288,10 @@ export class ProductRepository {
 
   async getCategoryAverages() {
     const col = await this.getPriceHistoryCollection()
-    // Pricing only lives in price_history, so average per category is
-    // computed from each item's latest snapshot, not from `products`.
+    // Average must come from price_history (not products) because that's
+    // the only place current_price lives. We take each item's most recent
+    // snapshot before grouping by category to avoid old snapshots skewing
+    // the average.
     return col
       .aggregate([
         { $sort: { scraped_at: -1 } },

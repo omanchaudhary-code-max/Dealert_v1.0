@@ -83,7 +83,7 @@ export default function LandingPage() {
             Never Pay Full Price in Nepal Again
           </h1>
           <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-            Dealert monitors prices across Daraz, Oliz Store, Sastodeal, and other retail websites in Nepal. Set alert targets and get instant notifications when prices plunge.
+            Dealert monitors prices across Daraz websites in Nepal. Set alert targets and get instant notifications when prices plunge.
           </p>
 
           {/* Centered Search Box */}
@@ -112,10 +112,10 @@ export default function LandingPage() {
           {/* Quick Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto pt-8">
             {[
-              { num: "50,000+", label: "Products Monitored" },
-              { num: "NPR 4.5M+", label: "User Savings" },
-              { num: "12,000+", label: "Price Alerts Triggered" },
-              { num: "15 min", label: "Crawler Check Interval" },
+              { num: "4,000+", label: "Products Monitored" },
+              { num: "NPR 0", label: "User Savings" },
+              { num: "0", label: "Price Alerts Triggered" },
+              { num: "1 hrs", label: "Crawler Check Interval" },
             ].map((stat, idx) => (
               <div key={idx} className="p-4 rounded-xl bg-card/65 border border-border/50 backdrop-blur-sm">
                 <p className="text-2xl font-bold text-primary">{stat.num}</p>
@@ -423,26 +423,29 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
           {[
-            {
-              quote: "Dealert helped me track the MacBook Air M2 price. I set an alert for 138k and got notified on Friday when it plummeted. Saved Rs. 17,000!",
-              author: "Niranjan Shrestha",
+             {
+              quote:
+                "The price history feature helped me understand whether a deal was actually worth waiting for.",
+              author: "Beta User",
               location: "Kathmandu",
-              role: "Software Engineer",
-              avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80",
+              role: "Early Tester",
+              avatar: "/avatars/user-1.jpg",
             },
             {
-              quote: "The fake page detector is awesome. Tested a '50% sale' on a television and saw they raised the original price just before the sale. Kept me from buying a fake deal.",
-              author: "Pooja Gurung",
-              location: "Lalitpur",
-              role: "Creative Designer",
-              avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80",
-            },
-            {
-              quote: "I use Dealert to check index statistics for my online store purchases. Being able to compare seller history is a lifesaver in Nepal e-commerce.",
-              author: "Sanjay Devkota",
+              quote:
+                "I liked how easy it was to set price alerts and receive notifications when products reached my target price.",
+              author: "Beta User",
               location: "Pokhara",
-              role: "E-commerce Merchant",
-              avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80",
+              role: "Early Tester",
+              avatar: "/avatars/user-2.jpg",
+            },
+            {
+              quote:
+                "The fake-discount detection feature provided useful insights before making a purchase.",
+              author: "Beta User",
+              location: "Lalitpur",
+              role: "Early Tester",
+              avatar: "/avatars/user-3.jpg",
             },
           ].map((test, idx) => (
             <div key={idx} className="p-6 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow">

@@ -13,7 +13,6 @@ import {
   HelpCircle,
   Loader2
 } from "lucide-react";
-import { formatPercentage } from "@/lib/jwt";
 
 interface DetectorResult {
   url: string;
