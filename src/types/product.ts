@@ -8,6 +8,7 @@ export interface Product {
   discountPercentage: number
   imageUrl: string
   productUrl: string
+  affiliateUrl?: string
   category: string
   sellerName: string
   inStock: boolean
