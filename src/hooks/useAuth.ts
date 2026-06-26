@@ -7,6 +7,7 @@ export interface User {
   role: string
   isVerified: boolean
   phoneNumber?: string
+  avatarUrl?: string
   savedAmount?: number
 }
 
@@ -62,7 +63,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         loading: false,
       })
 
-      // Fetch user notifications after login
       await get().checkSession()
 
       return res.user
@@ -112,7 +112,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       if (sessionRes.ok) {
         const sessionData = await sessionRes.json()
         if (sessionData.user) {
-          // Fetch notifications
           let notifications: Notification[] = []
           try {
             const notifRes = await fetch('/api/notification')
@@ -139,15 +138,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   markNotificationRead: async (id) => {
-    // Optimistic update
     set((state) => ({
       notifications: state.notifications.map((n) =>
         n.id === id ? { ...n, read: true } : n
       ),
     }))
-
-    // In a full production system, we'd make a PATCH/POST request to mark it read in SQL:
-    // await fetch(`/api/notification/${id}/read`, { method: 'PATCH' })
   },
 
   clearNotifications: async () => {
@@ -177,7 +172,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 }))
 
-// Custom hook helper that triggers checkSession on first load if not initialized
 import { useEffect } from 'react'
 
 export function useAuth() {
