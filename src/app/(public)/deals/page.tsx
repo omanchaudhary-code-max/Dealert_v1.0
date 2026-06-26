@@ -153,9 +153,6 @@ export default function DealsPage() {
                     >
                       {product.name}
                     </Link>
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                      {product.description}
-                    </p>
                   </div>
 
                   <div className="flex items-end justify-between pt-2 border-t border-border/50">

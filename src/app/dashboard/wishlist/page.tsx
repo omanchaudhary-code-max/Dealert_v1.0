@@ -1,18 +1,13 @@
 "use client";
 
 import { useWishlist } from "@/hooks/useWishlist";
-import { useProducts } from "@/hooks/useProducts";
-import { formatCurrency } from "@/lib/jwt";
-import { Heart, Trash2, Eye, ShoppingBag, ArrowDownRight } from "lucide-react";
+import { formatCurrency } from "@/lib/format";
+import { Heart, Trash2, Eye, ArrowDownRight } from "lucide-react";
 import Link from "next/link";
 
-export default function WishlistPage() {
-  const { wishlistItems, removeFromWishlist } = useWishlist();
+export default function WishlistPage()
+ {const { wishlistProducts, isLoading, removeFromWishlist } = useWishlist();
 
-  // Load products to find details of wishlisted items
-  const { data: products, isLoading } = useProducts();
-
-  const wishlistedProducts = products?.filter((p) => wishlistItems.includes(p.id)) || [];
 
   return (
     <div className="space-y-8 animate-fade-in text-foreground">
@@ -30,7 +25,7 @@ export default function WishlistPage() {
             <div key={idx} className="h-24 bg-muted rounded-xl animate-pulse" />
           ))}
         </div>
-      ) : wishlistedProducts.length === 0 ? (
+      ) : wishlistProducts.length === 0 ? (
         <div className="text-center p-16 bg-card border border-border rounded-2xl space-y-4">
           <Heart className="h-10 w-10 text-muted-foreground mx-auto" />
           <p className="font-semibold text-foreground">Your wishlist is empty</p>
@@ -46,7 +41,7 @@ export default function WishlistPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {wishlistedProducts.map((product) => (
+          {wishlistProducts.map((product) => (
             <div
               key={product.id}
               className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group"

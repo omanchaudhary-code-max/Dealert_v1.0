@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import {
   Bell,
@@ -13,8 +14,6 @@ import {
   User,
   Sparkles,
   LogOut,
-  ChevronDown,
-  CheckCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -125,9 +124,13 @@ export default function Navbar() {
 
         {/* Left Side: Logo & Desktop Navigation */}
         <div className="flex items-center gap-6 lg:gap-8">
-          <Link href="/" className="flex items-center space-x-2 font-bold text-2xl text-primary shrink-0">
-            <Sparkles className="h-6 w-6" />
-            <span>Dealert</span>
+          <Link href="/" className="flex items-center space-x-2 shrink-0">
+           <Image
+            src="/dealert_logo.png"
+            alt="Dealert"
+            width={100}
+            height={100}
+            className="h-10 w-auto rounded-3xl "/>
           </Link>
 
           {/* Desktop Navigation Links */}
