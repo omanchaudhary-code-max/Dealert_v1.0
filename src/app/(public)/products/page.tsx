@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useInfiniteProducts } from "@/hooks/useProducts";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -15,12 +15,10 @@ import { formatCurrency } from "@/lib/format";
 
 const SORT_OPTIONS = [
   { value: "default",    label: "Featured (Random)",   sortBy: "random",             isRandom: true  },
-  { value: "price-low",  label: "Price: Low to High",  sortBy: "currentPrice",       sortOrder: 1  as const, isRandom: false },
-  { value: "price-high", label: "Price: High to Low",  sortBy: "currentPrice",       sortOrder: -1 as const, isRandom: false },
+  { value: "price-low",  label: "Price: Low to High",  sortBy: "currentPrice",       isRandom: false },
+  { value: "price-high", label: "Price: High to Low",  sortBy: "currentPrice",       isRandom: false },
   { value: "discount",   label: "Biggest Discount %",  sortBy: "discountPercentage", isRandom: false },
   { value: "recent",     label: "Recently Updated",    sortBy: "lastCrawledAt",      isRandom: false },
-  // "rating" intentionally removed — not collected by the crawler,
-  // does not exist in the MongoDB schema.
 ] as const;
 
 type SortValue = (typeof SORT_OPTIONS)[number]["value"];
@@ -33,29 +31,24 @@ export default function ProductsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  // ✅ Read directly from URL — no local state mirror needed.
   const urlSearch   = searchParams.get("search")   || "";
   const urlCategory = searchParams.get("category") || "All";
   const urlSort     = (searchParams.get("sortBy")  || "default") as SortValue;
 
-  const [search,          setSearch]          = useState(urlSearch);
-  const [category,        setCategory]        = useState(urlCategory);
-  const [sortBy,          setSortBy]          = useState<SortValue>(urlSort);
+  // ✅ Only true local state (not reflected in the URL).
+  // searchInput is initialised from the URL but intentionally uncontrolled
+  // by effects — the <input key={urlSearch}> below resets the DOM element
+  // whenever the URL search param changes (back/forward nav), which is the
+  // correct React pattern for resetting uncontrolled-ish inputs.
+  const [searchInput,     setSearchInput]     = useState(urlSearch);
   const [showInStockOnly, setShowInStockOnly] = useState(false);
   const [priceRange,      setPriceRange]      = useState<number>(200000);
 
   const { wishlistItems, toggleWishlist } = useWishlist();
   const { isAuthenticated } = useAuth();
-
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Keep local state in sync when URL changes (back/forward navigation).
-  useEffect(() => {
-    setSearch(urlSearch);
-    setCategory(urlCategory);
-    setSortBy(urlSort);
-  }, [urlSearch, urlCategory, urlSort]);
-
-  // Resolve the active sort option and pass real API params to the hook.
   const activeSortOption = getSortOption(urlSort);
 
   const {
@@ -67,18 +60,11 @@ export default function ProductsPage() {
     refetch,
     error,
   } = useInfiniteProducts({
-    search:    urlSearch || undefined,
-    category:  urlCategory === "All" ? undefined : urlCategory,
-    sortBy:    activeSortOption.sortBy,
-    sortOrder: "sortOrder" in activeSortOption
-      ? activeSortOption.sortOrder
-      : undefined,
+    search:   urlSearch   || undefined,
+    category: urlCategory === "All" ? undefined : urlCategory,
+    sortBy:   activeSortOption.sortBy,
   });
 
-  // Flatten all pages + deduplicate by id.
-  // Required because $sample (random sort) re-draws on every request with
-  // no memory of previous pages — the same document appears on page 1
-  // and page 2, causing React's "duplicate key" warning.
   const allProducts = useMemo(() => {
     const pages = data?.pages.flatMap((p) => p.products) ?? [];
     const seen  = new Set<string>();
@@ -89,21 +75,17 @@ export default function ProductsPage() {
     });
   }, [data]);
 
-  // Client-side micro-filters — no extra network request.
   const filteredProducts = useMemo(
     () =>
       allProducts.filter((p) => {
-        if (showInStockOnly && !p.inStock)    return false;
-        if (p.currentPrice > priceRange)      return false;
+        if (showInStockOnly && !p.inStock)  return false;
+        if (p.currentPrice > priceRange)    return false;
         return true;
       }),
     [allProducts, showInStockOnly, priceRange]
   );
 
   const totalCount = data?.pages[0]?.pagination.total ?? 0;
-
-  // Disable infinite scroll for random — $sample re-draws means page 2
-  // will always contain duplicates from page 1.
   const canLoadMore = hasNextPage && !activeSortOption.isRandom;
 
   const handleObserver = useCallback(
@@ -124,7 +106,7 @@ export default function ProductsPage() {
   }, [handleObserver]);
 
   // ---------------------------------------------------------------------------
-  // URL helpers
+  // URL helpers — all filter changes go through the URL, not local state.
   // ---------------------------------------------------------------------------
 
   const updateFilters = (newParams: {
@@ -152,13 +134,11 @@ export default function ProductsPage() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateFilters({ search });
+    updateFilters({ search: searchInput });
   };
 
   const handleClearFilters = () => {
-    setSearch("");
-    setCategory("All");
-    setSortBy("default");
+    setSearchInput("");
     setShowInStockOnly(false);
     setPriceRange(200000);
     router.push("/products");
@@ -179,14 +159,9 @@ export default function ProductsPage() {
         </p>
       </div>
 
-      {/* Outer grid — filter sidebar + product grid */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
 
-        {/* ----------------------------------------------------------------- */}
-        {/* Filter sidebar — sticky so it stays in view while products scroll  */}
-        {/* max-h + overflow-y-auto lets it scroll independently if it ever    */}
-        {/* grows taller than the viewport (e.g. many categories added later). */}
-        {/* ----------------------------------------------------------------- */}
+        {/* Filter sidebar */}
         <aside className="lg:col-span-1 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto space-y-6 bg-card border border-border p-6 rounded-2xl">
 
           <div className="flex items-center justify-between">
@@ -209,16 +184,17 @@ export default function ProductsPage() {
             <label className="text-xs font-semibold text-foreground">Search</label>
             <form onSubmit={handleSearchSubmit} className="relative">
               <input
+                key={urlSearch}
                 type="text"
                 placeholder="Product name..."
                 className="w-full pl-3 pr-8 py-2 text-xs rounded-xl bg-muted border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-foreground"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                defaultValue={urlSearch}
+                onChange={(e) => setSearchInput(e.target.value)}
               />
-              {search && (
+              {searchInput && (
                 <button
                   type="button"
-                  onClick={() => { setSearch(""); updateFilters({ search: "" }); }}
+                  onClick={() => { setSearchInput(""); updateFilters({ search: "" }); }}
                   className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -234,9 +210,9 @@ export default function ProductsPage() {
               {["All", ...CATEGORIES].map((cat) => (
                 <button
                   key={cat}
-                  onClick={() => { setCategory(cat); updateFilters({ category: cat }); }}
+                  onClick={() => updateFilters({ category: cat })}
                   className={`text-left text-xs px-2.5 py-1.5 rounded-lg transition-colors font-medium ${
-                    category === cat
+                    urlCategory === cat
                       ? "bg-primary/10 text-primary font-bold"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
@@ -282,9 +258,7 @@ export default function ProductsPage() {
           </div>
         </aside>
 
-        {/* ----------------------------------------------------------------- */}
-        {/* Product grid — scrolls with the page naturally                    */}
-        {/* ----------------------------------------------------------------- */}
+        {/* Product grid */}
         <div className="lg:col-span-3 space-y-6">
 
           {/* Sort bar */}
@@ -301,12 +275,8 @@ export default function ProductsPage() {
               <span className="text-xs text-muted-foreground shrink-0">Sort By:</span>
               <select
                 className="bg-muted border border-border text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-foreground font-medium"
-                value={sortBy}
-                onChange={(e) => {
-                  const v = e.target.value as SortValue;
-                  setSortBy(v);
-                  updateFilters({ sortBy: v });
-                }}
+                value={urlSort}
+                onChange={(e) => updateFilters({ sortBy: e.target.value })}
               >
                 {SORT_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -366,7 +336,6 @@ export default function ProductsPage() {
                       key={product.id}
                       className="rounded-xl border border-border bg-card shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col justify-between overflow-hidden relative group"
                     >
-                      {/* Badge: out-of-stock takes priority over discount */}
                       {!product.inStock ? (
                         <div className="absolute top-3 left-3 z-10 bg-muted/90 text-muted-foreground text-[9px] font-bold px-2 py-1 rounded-full">
                           OUT OF STOCK
@@ -378,7 +347,6 @@ export default function ProductsPage() {
                         </div>
                       ) : null}
 
-                      {/* Image */}
                       <div className="aspect-video relative overflow-hidden bg-muted">
                         <img
                           src={product.imageUrl}
@@ -404,7 +372,6 @@ export default function ProductsPage() {
                         </button>
                       </div>
 
-                      {/* Card body */}
                       <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between gap-1">
@@ -423,8 +390,6 @@ export default function ProductsPage() {
                           >
                             {product.name}
                           </Link>
-                          {/* description omitted — not in crawler schema,
-                              would render blank on real API responses */}
                         </div>
 
                         <div className="flex items-end justify-between pt-2 border-t border-border/50">
