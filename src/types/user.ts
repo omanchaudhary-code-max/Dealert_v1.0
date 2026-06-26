@@ -3,6 +3,7 @@ export interface User {
   fullName: string
   email: string
   phoneNumber?: string
+  avatarUrl?: string
   role: 'USER' | 'ADMIN' | 'SUPER_ADMIN'
   isVerified: boolean
   createdAt: Date

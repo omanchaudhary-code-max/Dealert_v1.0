@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Bell,
   Sun,
@@ -12,7 +12,6 @@ import {
   X,
   Heart,
   User,
-  Sparkles,
   LogOut,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -38,12 +37,20 @@ export default function Navbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchSuggestions, setSearchSuggestions] = useState<any[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // ✅ Derived directly from searchQuery — no effect, no state.
+  const searchSuggestions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q.length <= 1) return [];
+    return INITIAL_PRODUCTS.filter((p) =>
+      p.name.toLowerCase().includes(q)
+    ).slice(0, 5);
+  }, [searchQuery]);
 
   // -------------------------
   // Theme toggle
@@ -51,13 +58,8 @@ export default function Navbar() {
   const toggleTheme = () => {
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
-
     if (typeof window !== "undefined") {
-      if (next === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
+      document.documentElement.classList.toggle("dark", next === "dark");
     }
   };
 
@@ -73,44 +75,24 @@ export default function Navbar() {
         setProfileOpen(false);
       }
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setSearchSuggestions([]);
+        setSearchQuery("");
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // -------------------------
-  // Search suggestions
-  // -------------------------
-  useEffect(() => {
-    if (searchQuery.trim().length > 1) {
-      const query = searchQuery.toLowerCase();
-
-      const filtered = INITIAL_PRODUCTS.filter((p) =>
-        p.name.toLowerCase().includes(query)
-      ).slice(0, 5);
-
-      setSearchSuggestions(filtered);
-    } else {
-      setSearchSuggestions([]);
-    }
-  }, [searchQuery]);
-
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (searchQuery.trim()) {
       router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
-      setSearchSuggestions([]);
+      setSearchQuery("");
     }
   };
 
   const handleSuggestionClick = (id: string) => {
     router.push(`/products/${id}`);
     setSearchQuery("");
-    setSearchSuggestions([]);
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -125,15 +107,15 @@ export default function Navbar() {
         {/* Left Side: Logo & Desktop Navigation */}
         <div className="flex items-center gap-6 lg:gap-8">
           <Link href="/" className="flex items-center space-x-2 shrink-0">
-           <Image
-            src="/dealert_logo.png"
-            alt="Dealert"
-            width={100}
-            height={100}
-            className="h-10 w-auto rounded-3xl "/>
+            <Image
+              src="/dealert_logo.png"
+              alt="Dealert"
+              width={100}
+              height={40}
+              className="h-10 w-auto rounded-3xl"
+            />
           </Link>
 
-          {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center space-x-5 text-sm font-semibold text-muted-foreground">
             <Link href="/products" className="hover:text-primary transition-colors py-1 px-2 rounded-lg hover:bg-muted/40">
               Products
@@ -144,8 +126,8 @@ export default function Navbar() {
             <Link href="/categories" className="hover:text-primary transition-colors py-1 px-2 rounded-lg hover:bg-muted/40">
               Categories
             </Link>
-            <Link href="/fake-page-detector" className="hover:text-primary transition-colors py-1 px-2 rounded-lg hover:bg-muted/40 flex items-center gap-1">
-              <span>Fake Page Detector</span>
+            <Link href="/fake-page-detector" className="hover:text-primary transition-colors py-1 px-2 rounded-lg hover:bg-muted/40">
+              Fake Page Detector
             </Link>
           </nav>
         </div>
@@ -188,7 +170,10 @@ export default function Navbar() {
           </button>
 
           {/* Wishlist */}
-          <Link href={isAuthenticated ? "/dashboard/wishlist" : "/login?redirect=/dashboard/wishlist"} className="relative p-2 text-muted-foreground hover:text-foreground">
+          <Link
+            href={isAuthenticated ? "/dashboard/wishlist" : "/login?redirect=/dashboard/wishlist"}
+            className="relative p-2 text-muted-foreground hover:text-foreground"
+          >
             <Heart className="h-5 w-5" />
             {wishlistItems.length > 0 && (
               <span className="absolute -top-1 -right-1 text-xs bg-red-500 text-white rounded-full px-1">
@@ -214,11 +199,7 @@ export default function Navbar() {
                   <span className="font-semibold text-sm">Notifications</span>
                   {unreadCount > 0 && (
                     <button
-                      onClick={() => {
-                        notifications.forEach(n => {
-                          if (!n.read) markNotificationRead(n.id);
-                        });
-                      }}
+                      onClick={() => notifications.forEach(n => { if (!n.read) markNotificationRead(n.id); })}
                       className="text-xs text-primary hover:underline font-medium cursor-pointer"
                     >
                       Mark all read
@@ -236,9 +217,7 @@ export default function Navbar() {
                         key={notif.id}
                         onClick={() => {
                           markNotificationRead(notif.id);
-                          if (notif.link) {
-                            router.push(notif.link);
-                          }
+                          if (notif.link) router.push(notif.link);
                           setNotifOpen(false);
                         }}
                         className={`px-4 py-3 hover:bg-muted cursor-pointer transition-colors border-b border-border/50 last:border-b-0 flex flex-col gap-1 ${
@@ -249,9 +228,7 @@ export default function Navbar() {
                           <span className={`text-xs font-semibold ${!notif.read ? "text-foreground" : "text-muted-foreground"}`}>
                             {notif.title}
                           </span>
-                          {!notif.read && (
-                            <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />
-                          )}
+                          {!notif.read && <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />}
                         </div>
                         <p className="text-[10px] text-muted-foreground leading-relaxed">{notif.message}</p>
                         <span className="text-[8px] text-muted-foreground/80 mt-1">
@@ -269,8 +246,13 @@ export default function Navbar() {
           {isAuthenticated ? (
             <div ref={profileRef} className="relative">
               <button onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-2 cursor-pointer">
-                <img
+                {/* ✅ Next.js Image for avatar — unoptimized since it's a remote pravatar URL */}
+                <Image
                   src={user?.avatarUrl || "https://i.pravatar.cc/40"}
+                  alt={user?.fullName || "User avatar"}
+                  width={28}
+                  height={28}
+                  unoptimized
                   className="h-7 w-7 rounded-full object-cover border border-border"
                 />
               </button>
@@ -282,44 +264,24 @@ export default function Navbar() {
                     <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
                   </div>
                   <div className="py-1">
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-xs hover:bg-muted text-foreground transition-colors"
-                    >
-                      <User className="h-3.5 w-3.5" />
-                      <span>Dashboard</span>
+                    <Link href="/dashboard" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 px-4 py-2 text-xs hover:bg-muted text-foreground transition-colors">
+                      <User className="h-3.5 w-3.5" /><span>Dashboard</span>
                     </Link>
-                    <Link
-                      href="/dashboard/profile"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-xs hover:bg-muted text-foreground transition-colors"
-                    >
-                      <User className="h-3.5 w-3.5" />
-                      <span>Account Settings</span>
+                    <Link href="/dashboard/profile" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 px-4 py-2 text-xs hover:bg-muted text-foreground transition-colors">
+                      <User className="h-3.5 w-3.5" /><span>Account Settings</span>
                     </Link>
                     {user?.role === "ADMIN" && (
-                      <Link
-                        href="/admin"
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-xs hover:bg-muted text-foreground transition-colors"
-                      >
-                        <User className="h-3.5 w-3.5" />
-                        <span>Admin Portal</span>
+                      <Link href="/admin" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 px-4 py-2 text-xs hover:bg-muted text-foreground transition-colors">
+                        <User className="h-3.5 w-3.5" /><span>Admin Portal</span>
                       </Link>
                     )}
                   </div>
                   <div className="border-t border-border mt-1 pt-1">
                     <button
-                      onClick={async () => {
-                        setProfileOpen(false);
-                        await logout();
-                        router.push("/");
-                      }}
+                      onClick={async () => { setProfileOpen(false); await logout(); router.push("/"); }}
                       className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs hover:bg-destructive/10 text-destructive transition-colors cursor-pointer"
                     >
-                      <LogOut className="h-3.5 w-3.5" />
-                      <span>Sign Out</span>
+                      <LogOut className="h-3.5 w-3.5" /><span>Sign Out</span>
                     </button>
                   </div>
                 </div>
@@ -339,16 +301,13 @@ export default function Navbar() {
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation */}
+      {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-border bg-card/95 backdrop-blur-md py-4">
           <div className="container mx-auto px-4 flex flex-col gap-4">
-            
-            {/* Search Input for Mobile */}
             <div className="block md:hidden">
               <form onSubmit={handleSearchSubmit} className="w-full">
                 <div className="relative">
@@ -362,37 +321,22 @@ export default function Navbar() {
                 </div>
               </form>
             </div>
-
-            {/* Mobile Navigation Links */}
             <nav className="flex flex-col gap-2 font-semibold text-sm">
-              <Link
-                href="/products"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Products
-              </Link>
-              <Link
-                href="/deals"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Deals
-              </Link>
-              <Link
-                href="/categories"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Categories
-              </Link>
-              <Link
-                href="/fake-page-detector"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Fake Page Detector
-              </Link>
+              {[
+                { href: "/products", label: "Products" },
+                { href: "/deals", label: "Deals" },
+                { href: "/categories", label: "Categories" },
+                { href: "/fake-page-detector", label: "Fake Page Detector" },
+              ].map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {label}
+                </Link>
+              ))}
             </nav>
           </div>
         </div>
