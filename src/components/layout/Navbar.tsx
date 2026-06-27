@@ -113,6 +113,7 @@ export default function Navbar() {
               width={100}
               height={40}
               className="h-10 w-auto rounded-3xl"
+              style={{ width: "auto" }} 
             />
           </Link>
 
@@ -247,14 +248,15 @@ export default function Navbar() {
             <div ref={profileRef} className="relative">
               <button onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-2 cursor-pointer">
                 {/* ✅ Next.js Image for avatar — unoptimized since it's a remote pravatar URL */}
-                <Image
-                  src={user?.avatarUrl || "https://i.pravatar.cc/40"}
-                  alt={user?.fullName || "User avatar"}
-                  width={28}
-                  height={28}
-                  unoptimized
-                  className="h-7 w-7 rounded-full object-cover border border-border"
-                />
+              <Image
+                src={user?.avatarUrl || "https://i.pravatar.cc/40"}
+                alt={user?.fullName || "User"}
+                width={28}
+                height={28}
+                unoptimized
+                className="h-7 w-7 rounded-full object-cover border border-border"
+                style={{ width: "auto" }}
+              />
               </button>
 
               {profileOpen && (

@@ -1,8 +1,6 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose'
 import { env } from '@/lib/env'
 import { authConfig } from '@/config/auth.config'
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
 
 export interface TokenPayload extends JWTPayload {
   userId: string
@@ -37,20 +35,4 @@ export async function verifyAccessToken(token: string): Promise<TokenPayload> {
 export async function verifyRefreshToken(token: string): Promise<TokenPayload> {
   const { payload } = await jwtVerify(token, refreshSecret)
   return payload as TokenPayload
-}
-
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-NP', {
-    style: 'currency',
-    currency: 'NPR',
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
-
-export function formatPercentage(value: number): string {
-  return `${value.toFixed(1)}%`
-}
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
 }

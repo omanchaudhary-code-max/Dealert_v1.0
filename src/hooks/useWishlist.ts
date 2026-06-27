@@ -1,36 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Product } from './useProducts'
+import { useAuthStore } from '@/hooks/useAuth'
 
 export function useWishlist() {
   const queryClient = useQueryClient()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
 
-  // Query to fetch full wishlist products
   const { data: wishlistProducts = [], isLoading } = useQuery<Product[]>({
     queryKey: ['wishlist'],
     queryFn: async () => {
       const res = await fetch('/api/wishlist')
       if (!res.ok) {
-        // Return empty array if unauthorized/not logged in
         if (res.status === 401) return []
         throw new Error('Failed to fetch wishlist')
       }
       const data = await res.json()
-      return data.map((p: any) => ({
-        ...p,
-        id: p._id || p.id,
-      }))
+      return data.map((p: any) => ({ ...p, id: p._id || p.id }))
     },
+    enabled: isAuthenticated, // ✅ skip the request entirely when logged out
     retry: false,
   })
 
-  // List of wishlisted product IDs
-  const wishlistItems = wishlistProducts.map(p => p.id)
+  const wishlistItems = wishlistProducts.map((p) => p.id)
 
-  const isWishlisted = (productId: string) => {
-    return wishlistItems.includes(productId)
-  }
+  const isWishlisted = (productId: string) => wishlistItems.includes(productId)
 
-  // Mutation to add single product
   const addMutation = useMutation({
     mutationFn: async (productId: string) => {
       const res = await fetch('/api/wishlist/add', {
@@ -44,12 +38,9 @@ export function useWishlist() {
       }
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['wishlist'] })
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
   })
 
-  // Mutation to remove single product
   const removeMutation = useMutation({
     mutationFn: async (productId: string) => {
       const res = await fetch('/api/wishlist/remove', {
@@ -63,12 +54,9 @@ export function useWishlist() {
       }
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['wishlist'] })
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
   })
 
-  // Mutation to bulk add products
   const bulkAddMutation = useMutation({
     mutationFn: async (productIds: string[]) => {
       const res = await fetch('/api/wishlist/bulk-add', {
@@ -82,12 +70,9 @@ export function useWishlist() {
       }
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['wishlist'] })
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
   })
 
-  // Toggle helper
   const toggleWishlist = async (productId: string) => {
     if (isWishlisted(productId)) {
       await removeMutation.mutateAsync(productId)
