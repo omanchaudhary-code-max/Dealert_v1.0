@@ -2,15 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { AdminService } from "@/actions/admin.actions";
-import { formatCurrency } from "@/lib/jwt";
+import { formatCurrency } from "@/lib/format";
 import {
   TrendingUp,
   MousePointerClick,
   Percent,
   Banknote,
-  ChevronRight,
-  ExternalLink,
-  ShieldCheck,
   Loader2
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";

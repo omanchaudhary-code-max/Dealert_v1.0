@@ -3,7 +3,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useAlerts } from "@/hooks/useAlerts";
-import { formatCurrency } from "@/lib/jwt";
+import { formatCurrency } from "@/lib/format";
 import {
   Heart,
   Bell,

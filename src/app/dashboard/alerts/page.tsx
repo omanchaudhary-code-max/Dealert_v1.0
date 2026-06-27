@@ -1,7 +1,7 @@
 "use client";
 
 import { useAlerts } from "@/hooks/useAlerts";
-import { formatCurrency } from "@/lib/jwt";
+import { formatCurrency } from "@/lib/format";
 import { Bell, Trash2, Edit2, CheckCircle2, AlertTriangle, Eye, Plus, X, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { INITIAL_PRODUCTS } from "@/lib/constants";

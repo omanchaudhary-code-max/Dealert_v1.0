@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { ProductService } from "@/actions/product.actions";
 import { Product } from "@/types/product";
-import { formatCurrency } from "@/lib/jwt";
-import { Search, Edit, Eye, Filter, ArrowUpRight, X, AlertCircle } from "lucide-react";
+import { formatCurrency } from "@/lib/format";
+import { Search, Edit, Eye, Filter, X } from "lucide-react";
 import Link from "next/link";
 import { CATEGORIES } from "@/lib/constants";
 

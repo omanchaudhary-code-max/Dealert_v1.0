@@ -25,7 +25,7 @@ import {
   UserCheck
 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
-import { formatCurrency, formatPercentage } from "@/lib/jwt";
+import { formatCurrency} from "@/lib/format";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useRouter } from "next/navigation";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";

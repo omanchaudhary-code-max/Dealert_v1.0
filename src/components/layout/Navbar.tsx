@@ -107,14 +107,15 @@ export default function Navbar() {
         {/* Left Side: Logo & Desktop Navigation */}
         <div className="flex items-center gap-6 lg:gap-8">
           <Link href="/" className="flex items-center space-x-2 shrink-0">
-            <Image
-              src="/dealert_logo.png"
-              alt="Dealert"
-              width={100}
-              height={40}
-              className="h-10 w-auto rounded-3xl"
-              style={{ width: "auto" }} 
-            />
+          
+          <Image
+            src="/dealert_logo.png"
+            alt="Dealert"
+            width={100}
+            height={40}
+            className="rounded-3xl"
+            style={{ height: "40px", width: "auto" }}
+          />
           </Link>
 
           <nav className="hidden lg:flex items-center space-x-5 text-sm font-semibold text-muted-foreground">
@@ -255,7 +256,6 @@ export default function Navbar() {
                 height={28}
                 unoptimized
                 className="h-7 w-7 rounded-full object-cover border border-border"
-                style={{ width: "auto" }}
               />
               </button>
 

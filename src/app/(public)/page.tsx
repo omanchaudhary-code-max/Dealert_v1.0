@@ -304,12 +304,12 @@ export default function LandingPage() {
         </div>
 
         {/* ✅ DealertChart loaded client-only via dynamic import — no SSR measurement issue */}
-        <div className="w-full bg-muted/20 p-4 rounded-xl border border-border/50" style={{ height: "288px" }}>
-          <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mb-4">Dealert Price Index (DPI)</p>
-          <div style={{ width: "100%", height: "calc(100% - 28px)" }}>
-            <DealertChart />
-          </div>
-        </div>
+       <div className="w-full bg-muted/20 p-4 rounded-xl border border-border/50">
+        <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mb-4">
+          Dealert Price Index (DPI)
+        </p>
+        <DealertChart />
+      </div>
       </section>
 
       {/* 7. Testimonials */}

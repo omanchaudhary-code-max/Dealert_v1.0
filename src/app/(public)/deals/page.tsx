@@ -6,7 +6,7 @@ import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { ArrowDownRight, Heart, Sparkles, AlertTriangle, Eye } from "lucide-react";
-import { formatCurrency } from "@/lib/jwt";
+import { formatCurrency } from "@/lib/format";
 import Link from "next/link";
 
 type DealTab = "biggest" | "daily" | "weekly" | "trending";

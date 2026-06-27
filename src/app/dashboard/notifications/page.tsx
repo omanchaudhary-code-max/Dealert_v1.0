@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import { Bell, MailCheck, ShieldCheck, Trash2, CheckSquare } from "lucide-react";
-import { formatCurrency } from "@/lib/jwt";
+
 
 export default function NotificationsPage() {
   const { notifications, markNotificationRead, clearNotifications } = useAuth();
