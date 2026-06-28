@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginInput } from "@/validations/auth.schema";
@@ -8,7 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Loader2 } from "lucide-react";
 
-export default function LoginPage() {
+// ✅ Isolated into its own component so Suspense can wrap it
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get("redirect") || "/dashboard";
@@ -25,10 +27,10 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginInput) => {
     try {
-      const user = await login(data);
+      await login(data);
       router.push(redirectUrl);
     } catch {
-      // Handled by state
+      // Handled by store error state
     }
   };
 
@@ -65,10 +67,7 @@ export default function LoginPage() {
         <div className="space-y-1.5">
           <div className="flex justify-between items-center">
             <label className="text-xs font-semibold">Password</label>
-            <Link
-              href="/forgot-password"
-              className="text-[10px] text-primary font-bold hover:underline"
-            >
+            <Link href="/forgot-password" className="text-[10px] text-primary font-bold hover:underline">
               Forgot Password?
             </Link>
           </div>
@@ -92,7 +91,7 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full bg-primary hover:bg-primary/95 text-primary-foreground font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-primary/20 cursor-pointer disabled:opacity-50"
         >
-          {loading ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : null}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           <span>Sign In</span>
         </button>
       </form>
@@ -108,5 +107,21 @@ export default function LoginPage() {
         💡 Use <b>user@dealert.com</b> (standard user) or <b>admin@dealert.com</b> (admin role) with password <b>password</b> to access the dashboards.
       </div>
     </div>
+  );
+}
+
+// ✅ Default export wraps in Suspense — required by Next.js for useSearchParams()
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-4 animate-pulse">
+        <div className="h-7 bg-muted rounded-xl w-1/2 mx-auto" />
+        <div className="h-10 bg-muted rounded-xl" />
+        <div className="h-10 bg-muted rounded-xl" />
+        <div className="h-10 bg-muted rounded-xl" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
