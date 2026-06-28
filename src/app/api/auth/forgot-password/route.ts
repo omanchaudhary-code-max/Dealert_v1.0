@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authService } from '@/services/auth.service'
 import { forgotPasswordSchema } from '@/validations/auth.schema'
 import { env } from '@/lib/env'
-import { resend, FROM_EMAIL } from '@/lib/resend'
+import { getResend, FROM_EMAIL } from '@/lib/resend'
 import { ResetPasswordTemplate } from '@/emails/reset-password'
 
 export async function POST(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       const resetUrl = `${env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`
       const html = ResetPasswordTemplate({ userName: 'User', resetUrl })
 
-      await resend.emails.send({
+      await getResend().emails.send({
         from: FROM_EMAIL,
         to: email,
         subject: 'Reset your Dealert password',

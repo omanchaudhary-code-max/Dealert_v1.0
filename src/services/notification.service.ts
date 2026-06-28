@@ -1,5 +1,5 @@
 import { notificationRepository } from '@/repositories/notification.repository'
-import { resend, FROM_EMAIL } from '@/lib/resend'
+import { getResend, FROM_EMAIL } from '@/lib/resend'
 import { logger } from '@/lib/logger'
 
 export class NotificationService {
@@ -21,7 +21,7 @@ export class NotificationService {
     })
 
     try {
-      await resend.emails.send({
+      await getResend().emails.send({
         from: FROM_EMAIL,
         to: options.to,
         subject: `🎉 Price Drop Alert: ${options.productName}`,
