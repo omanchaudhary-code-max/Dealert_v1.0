@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 const envSchema = z.object({
-  DATABASE_URL: z.string().optional(),
-  MONGODB_URI: z.string().optional(),
+  DATABASE_URL: z.string().default(""),
+  MONGODB_URI: z.string().default("mongodb://localhost:27017"),
 
   JWT_ACCESS_SECRET: z.string().default("dev-access-secret-not-for-production"),
   JWT_REFRESH_SECRET: z.string().default("dev-refresh-secret-not-for-production"),
@@ -28,8 +28,6 @@ if (!parsed.success) {
   console.warn("⚠️ Invalid or missing env vars:", parsed.error.flatten().fieldErrors);
 }
 
-// Always use parsed.data — it includes zod defaults even when env vars are missing.
-// Never fall back to raw process.env which has no defaults and causes undefined errors.
 export const env = parsed.success
   ? parsed.data
-  : envSchema.parse({}); // force defaults if safeParse failed
+  : envSchema.parse({});
