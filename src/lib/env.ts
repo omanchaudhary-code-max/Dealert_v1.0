@@ -25,7 +25,11 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.warn("⚠️ Invalid or missing env vars (dev mode allowed):", parsed.error.flatten().fieldErrors);
+  console.warn("⚠️ Invalid or missing env vars:", parsed.error.flatten().fieldErrors);
 }
 
-export const env = parsed.success ? parsed.data : (process.env as any);
+// Always use parsed.data — it includes zod defaults even when env vars are missing.
+// Never fall back to raw process.env which has no defaults and causes undefined errors.
+export const env = parsed.success
+  ? parsed.data
+  : envSchema.parse({}); // force defaults if safeParse failed
